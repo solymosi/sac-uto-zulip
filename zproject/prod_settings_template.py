@@ -791,11 +791,11 @@ ENABLE_FILE_LINKS = False
 ## need to manually edit Zulip's nginx configuration to use the new
 ## path.  For that reason, we recommend replacing /home/zulip/uploads
 ## with a symlink instead of changing LOCAL_UPLOADS_DIR.
-LOCAL_UPLOADS_DIR = "/home/zulip/uploads"
-# S3_AUTH_UPLOADS_BUCKET = ""
-# S3_AVATAR_BUCKET = ""
-# S3_REGION = None
-# S3_ENDPOINT_URL = None
+# LOCAL_UPLOADS_DIR = "/home/zulip/uploads"
+S3_AUTH_UPLOADS_BUCKET = "__zulip_s3_uploads_bucket__"
+S3_AVATAR_BUCKET = "__zulip_s3_avatars_bucket__"
+S3_REGION = "__zulip_s3_region__"
+S3_ENDPOINT_URL = "__zulip_s3_endpoint_url__"
 # S3_ADDRESSING_STYLE = "auto"
 # S3_SKIP_PROXY = True
 # S3_UPLOADS_STORAGE_CLASS = "STANDARD"
