@@ -108,7 +108,7 @@ esac
 certbot certonly "${method_args[@]}" \
     "${HOSTNAMES[@]}" -m "$EMAIL" \
     "${agree_tos[@]}" \
-    --force-interactive --no-eff-email
+    --non-interactive --agree-tos --no-eff-email
 
 symlink_with_backup() {
     if [ -e "$2" ]; then
