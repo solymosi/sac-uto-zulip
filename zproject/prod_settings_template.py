@@ -29,7 +29,7 @@ from .config import get_secret
 ## support@example.com is totally reasonable, as is admin@example.com.
 ## Do not put a display name; e.g. "support@example.com", not
 ## "Zulip Support <support@example.com>".
-ZULIP_ADMINISTRATOR = "zulip-admin@example.com"
+ZULIP_ADMINISTRATOR = "__zulip_email_user__"
 
 ## The user-accessible Zulip hostname for this installation, e.g.
 ## zulip.example.com.  This should match what users will put in their
@@ -38,7 +38,7 @@ ZULIP_ADMINISTRATOR = "zulip-admin@example.com"
 ##
 ## If you need to access the server on a specific port, you should set
 ## EXTERNAL_HOST to e.g. zulip.example.com:1234 here.
-EXTERNAL_HOST = "zulip.example.com"
+EXTERNAL_HOST = "__zulip_external_host__"
 
 ## Alternative hostnames.  A comma-separated list of strings
 ## representing the host/domain names that your users can enter in
@@ -74,8 +74,8 @@ EXTERNAL_HOST = "zulip.example.com"
 ## EMAIL_HOST and EMAIL_HOST_USER are generally required.  If your
 ## SMTP server does not require authentication, leave EMAIL_HOST_USER
 ## commented out.
-# EMAIL_HOST = "smtp.example.com"
-# EMAIL_HOST_USER = ""
+EMAIL_HOST = "__zulip_email_host__"
+EMAIL_HOST_USER = "__zulip_email_user__"
 
 ## Passwords and secrets are not stored in this file.  The password
 ## for user EMAIL_HOST_USER goes in `/etc/zulip/zulip-secrets.conf`.
@@ -83,8 +83,8 @@ EXTERNAL_HOST = "zulip.example.com"
 # email_password = abcd1234
 
 ## EMAIL_USE_TLS and EMAIL_PORT are required for most SMTP providers.
-# EMAIL_USE_TLS = True
-# EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
 
 ## The noreply address to be used as the sender for certain generated
 ## emails.  Messages sent to this address could contain sensitive user
@@ -93,13 +93,13 @@ EXTERNAL_HOST = "zulip.example.com"
 ## zulip.example.com).  There are potential security issues if you set
 ## ADD_TOKENS_TO_NOREPLY_ADDRESS=False to remove the token; see
 ## https://zulip.readthedocs.io/en/latest/production/email.html for details.
-# ADD_TOKENS_TO_NOREPLY_ADDRESS = True
+ADD_TOKENS_TO_NOREPLY_ADDRESS = False
 # TOKENIZED_NOREPLY_EMAIL_ADDRESS = "noreply-{token}@example.com"
 ## NOREPLY_EMAIL_ADDRESS is the sender for noreply emails that don't
 ## contain confirmation links (where the security problem fixed by
 ## ADD_TOKENS_TO_NOREPLY_ADDRESS does not exist), as well as for
 ## confirmation emails when ADD_TOKENS_TO_NOREPLY_ADDRESS=False.
-# NOREPLY_EMAIL_ADDRESS = "noreply@example.com"
+NOREPLY_EMAIL_ADDRESS = "__zulip_email_user__"
 
 ## Emails sent by the Zulip server will use a sender name starting
 ## with INSTALLATION_NAME. The default is EXTERNAL_HOST. If INSTALLATION_NAME is
@@ -737,7 +737,7 @@ SOCIAL_AUTH_SAML_SUPPORT_CONTACT = {
 ## notification bouncer server to the mobile apps.  See
 ## https://zulip.readthedocs.io/en/latest/production/mobile-push-notifications.html
 ## for information on how to sign up for and configure this.
-# PUSH_NOTIFICATION_BOUNCER_URL = "https://push.zulipchat.com"
+PUSH_NOTIFICATION_BOUNCER_URL = "https://push.zulipchat.com"
 
 ## Whether to redact the content of push notifications.  This is less
 ## usable, but avoids sending message content over the wire.  In the
@@ -750,10 +750,10 @@ SOCIAL_AUTH_SAML_SUPPORT_CONTACT = {
 ##   https://zulip.readthedocs.io/en/latest/production/mobile-push-notifications.html
 ##
 ## Defaults to True if and only if the Mobile Push Notifications Service is enabled.
-# SUBMIT_USAGE_STATISTICS = True
+SUBMIT_USAGE_STATISTICS = False
 
 ## Whether to lightly advertise sponsoring Zulip in the gear menu.
-# PROMOTE_SPONSORING_ZULIP = True
+PROMOTE_SPONSORING_ZULIP = False
 
 ## Controls whether session cookies expire when the browser closes
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
@@ -803,7 +803,7 @@ MAX_FILE_UPLOAD_SIZE = 25
 ## Controls whether name changes are completely disabled for this
 ## installation.  This is useful when you're syncing names from an
 ## integrated LDAP/Active Directory.
-NAME_CHANGES_DISABLED = False
+NAME_CHANGES_DISABLED = True
 
 ## Controls whether avatar changes are completely disabled for this
 ## installation.  This is useful when you're syncing avatars from an
@@ -860,3 +860,6 @@ CAMO_URI = "/external_content/"
 
 ## Directory containing Markdown files for the server's policies.
 # POLICIES_DIRECTORY = "/etc/zulip/policies/"
+
+# Disable registration link
+REGISTER_LINK_DISABLED = True
