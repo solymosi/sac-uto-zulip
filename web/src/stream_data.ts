@@ -498,7 +498,7 @@ export function can_toggle_subscription(sub: StreamSubscription): boolean {
     // deactivated streams are automatically made private during the
     // archive stream process.
     return (
-        (sub.subscribed || (!page_params.is_guest && !sub.invite_only)) && !page_params.is_spectator
+        (sub.subscribed || (!page_params.is_guest && !sub.invite_only)) && !page_params.is_spectator || page_params.is_admin
     );
 }
 
@@ -516,12 +516,12 @@ export function can_access_topic_history(sub: StreamSubscription): boolean {
     return sub.is_web_public || can_toggle_subscription(sub);
 }
 
-export function can_preview(sub: StreamSubscription): boolean {
-    return sub.subscribed || !sub.invite_only || sub.previously_subscribed === true;
+export function can_preview(sub) {
+    return sub.subscribed || !sub.invite_only || sub.previously_subscribed === true || page_params.is_admin;
 }
 
 export function can_change_permissions(sub: StreamSubscription): boolean {
-    return page_params.is_admin && (!sub.invite_only || sub.subscribed);
+    return page_params.is_admin;
 }
 
 export function can_view_subscribers(sub: StreamSubscription): boolean {
@@ -535,7 +535,8 @@ export function can_subscribe_others(sub: StreamSubscription): boolean {
     return (
         !page_params.is_guest &&
         (!sub.invite_only || sub.subscribed) &&
-        settings_data.user_can_subscribe_other_users()
+        settings_data.user_can_subscribe_other_users() ||
+        page_params.is_admin
     );
 }
 

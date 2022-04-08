@@ -125,6 +125,11 @@ def validate_attachment_request(
     if user_profile == attachment.owner:
         # If you own the file, you can access it.
         return True
+
+    # SAC Uto patch: allow admins to view all attachments in all streams
+    if user_profile.is_realm_admin:
+        return True
+
     if (
         attachment.is_realm_public
         and attachment.realm == user_profile.realm

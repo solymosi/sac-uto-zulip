@@ -368,6 +368,10 @@ def has_message_access(
         # You can't access public stream messages in other realms
         return False
 
+    # SAC Uto patch: allow admins to access messages even in private streams
+    if user_profile.is_realm_admin:
+        return True
+
     def is_subscribed_helper() -> bool:
         if is_subscribed is not None:
             return is_subscribed

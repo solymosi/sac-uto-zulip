@@ -415,7 +415,7 @@ def access_stream_common(
     except Subscription.DoesNotExist:
         sub = None
 
-    if check_basic_stream_access(user_profile, stream, sub, allow_realm_admin=allow_realm_admin):
+    if check_basic_stream_access(user_profile, stream, sub, allow_realm_admin=True):
         return sub
 
     # Otherwise it is a private stream and you're not on it, so throw
@@ -596,6 +596,10 @@ def can_access_stream_history(user_profile: UserProfile, stream: Stream) -> bool
     if stream.is_web_public:
         return True
 
+    # SAC Uto patch: allow admins to access the history of any stream
+    if user_profile.is_realm_admin:
+        return True
+
     if stream.is_history_realm_public() and not user_profile.is_guest:
         return True
 
@@ -655,6 +659,10 @@ def filter_stream_authorization(
 
         # Web-public streams are accessible even to guests
         if stream.is_web_public:
+            continue
+
+        # SAC Uto patch: admins are allowed for any stream, even private ones
+        if user_profile.is_realm_admin:
             continue
 
         # Members and administrators are authorized for public streams
