@@ -150,8 +150,11 @@ def set_up_streams_for_new_human_user(
     # default streams for the realm. Note that we are fine with "slim" Stream
     # objects for calling bulk_add_subscriptions and add_new_user_history,
     # which we verify in StreamSetupTest tests that check query counts.
-    if len(streams) == 0 and not user_was_invited:
-        streams = get_slim_realm_default_streams(realm.id)
+    # if len(streams) == 0 and not user_was_invited:
+    #     streams = get_slim_realm_default_streams(realm.id)
+    # SAC Uto patch: always subscribe new non-guest users to all default streams
+    if prereg_user.invited_as != PreregistrationUser.INVITE_AS["GUEST_USER"]:
+        streams.extend(get_slim_realm_default_streams(realm.id))
 
     for default_stream_group in default_stream_groups:
         default_stream_group_streams = default_stream_group.streams.all()

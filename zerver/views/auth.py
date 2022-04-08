@@ -36,6 +36,7 @@ from confirmation.models import (
     render_confirmation_key_error,
 )
 from version import API_FEATURE_LEVEL, ZULIP_MERGE_BASE, ZULIP_VERSION
+from zerver.actions.streams import bulk_add_subscriptions
 from zerver.context_processors import get_realm_from_request, login_context, zulip_default_context
 from zerver.decorator import do_login, log_view_func, process_client, require_post
 from zerver.forms import (
@@ -74,6 +75,7 @@ from zerver.models import (
     PreregistrationRealm,
     PreregistrationUser,
     Realm,
+    Stream,
     UserProfile,
 )
 from zerver.models.prereg_users import filter_to_valid_prereg_users
@@ -387,6 +389,12 @@ def login_or_register_remote_user(request: HttpRequest, result: ExternalAuthResu
     # account, and we need to do the right thing depending whether
     # or not they're using the mobile OTP flow or want a browser session.
     is_realm_creation = result.data_dict.get("is_realm_creation")
+
+    # SAC Uto patch: if we came from an invite link, add the user to any private streams in the invitation
+    multiuse_object_key = result.data_dict.get("multiuse_object_key")
+    if multiuse_object_key:
+        sac_uto_add_user_to_private_streams_from_multiuse_object(request, user_profile, multiuse_object_key)
+
     if mobile_flow_otp is not None:
         return finish_mobile_flow(request, user_profile, mobile_flow_otp)
     elif desktop_flow_otp is not None:
@@ -406,6 +414,21 @@ def login_or_register_remote_user(request: HttpRequest, result: ExternalAuthResu
     redirect_to = get_safe_redirect_to(redirect_to, user_profile.realm.uri)
     return HttpResponseRedirect(redirect_to)
 
+# SAC Uto patch: if we came from an invite link, add the user to any private streams in the invitation
+def sac_uto_add_user_to_private_streams_from_multiuse_object(request: HttpRequest, user_profile: UserProfile, multiuse_object_key: str):
+    try:
+        multiuse_obj = get_object_from_key(multiuse_object_key, [Confirmation.MULTIUSE_INVITE])
+    except ConfirmationKeyException as exception:
+        return render_confirmation_key_error(request, exception)
+    assert multiuse_obj is not None
+    streams_to_subscribe: List[Stream] = list(multiuse_obj.streams.filter(invite_only=True))
+    bulk_add_subscriptions(
+        multiuse_obj.realm,
+        streams_to_subscribe,
+        [user_profile],
+        from_user_creation=False,
+        acting_user=multiuse_obj.referred_by,
+    )
 
 def finish_desktop_flow(
     request: HttpRequest,

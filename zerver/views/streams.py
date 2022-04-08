@@ -102,6 +102,7 @@ from zerver.lib.validator import (
 )
 from zerver.models import Realm, Stream, UserGroup, UserProfile
 from zerver.models.users import get_system_bot
+from zerver.models.prereg_users import PreregistrationUser
 
 
 def principal_to_user_profile(agent: UserProfile, principal: Union[str, int]) -> UserProfile:
@@ -696,7 +697,8 @@ def add_subscriptions_backend(
         new_subscriptions=result["subscribed"],
         email_to_user_profile=email_to_user_profile,
         created_streams=created_streams,
-        announce=announce,
+        # SAC Uto patch: make sure we don't announce new private streams
+        announce=announce and not invite_only,
     )
 
     result["subscribed"] = dict(result["subscribed"])
@@ -818,6 +820,24 @@ def send_messages_for_new_subscribers(
                         + f"\n```` quote\n{stream_description}\n````",
                     ),
                 )
+
+                # SAC Uto patch: generate and publish invite link for newly created private streams
+                if stream.invite_only:
+                    from zerver.actions.invites import do_create_multiuse_invite_link
+
+                    invite_link = do_create_multiuse_invite_link(
+                        user_profile, PreregistrationUser.INVITE_AS["MEMBER"], 100 * 365, [stream]
+                    )
+                    notifications.append(
+                        internal_prep_stream_message(
+                            sender=sender,
+                            stream=stream,
+                            topic=Realm.STREAM_EVENTS_NOTIFICATION_TOPIC,
+                            content=_("Mit diesem Link können weitere Personen zu diesem privaten Stream eingeladen werden:\n\n{invite_link}").format(
+                                invite_link=invite_link
+                            ),
+                        ),
+                    )
 
     if len(notifications) > 0:
         do_send_messages(notifications, mark_as_read=[user_profile.id])
