@@ -159,7 +159,15 @@ AUTHENTICATION_BACKENDS: Tuple[str, ...] = (
     # "zproject.backends.ZulipLDAPAuthBackend",  # LDAP, setup below
     # "zproject.backends.ZulipRemoteUserBackend",  # Local SSO, setup docs on readthedocs
     # "zproject.backends.GenericOpenIdConnectBackend",  # Generic OIDC integration, setup below
+    "zproject.backends.SacLoginBackend",
 )
+
+SAC_LOGIN_CONFIG = {
+    "discovery_url": "__zulip_sac_login_discovery_url__",
+    "client_id": "__zulip_sac_login_client_id__",
+    "client_secret": get_secret("sac_oidc_secret"),
+    "allowed_roles": ["__zulip_sac_login_uto_section_id__"],
+}
 
 ## LDAP integration.
 ##

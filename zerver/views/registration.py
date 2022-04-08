@@ -616,7 +616,7 @@ def registration_helper(
                     source_profile=source_profile,
                     realm_creation=realm_creation,
                     acting_user=None,
-                    enable_marketing_emails=enable_marketing_emails,
+                    enable_marketing_emails=False,
                     email_address_visibility=email_address_visibility,
                 )
             except IntegrityError:

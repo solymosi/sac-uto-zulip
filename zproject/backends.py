@@ -32,6 +32,7 @@ from typing import (
     cast,
 )
 from urllib.parse import urlencode
+from confirmation.models import Confirmation, ConfirmationKeyError, get_object_from_key
 
 import magic
 import orjson
@@ -80,13 +81,15 @@ from typing_extensions import override
 from zxcvbn import zxcvbn
 
 from zerver.actions.create_user import do_create_user, do_reactivate_user
+from zerver.lib.default_streams import get_slim_realm_default_streams
 from zerver.actions.custom_profile_fields import do_update_user_custom_profile_data_if_changed
+from zerver.actions.streams import bulk_add_subscriptions
 from zerver.actions.user_groups import (
     bulk_add_members_to_user_groups,
     bulk_remove_members_from_user_groups,
 )
 from zerver.actions.user_settings import do_regenerate_api_key
-from zerver.actions.users import do_deactivate_user
+from zerver.actions.users import do_deactivate_user, do_change_user_role
 from zerver.lib.avatar import avatar_url, is_avatar_new
 from zerver.lib.avatar_hash import user_avatar_content_hash
 from zerver.lib.dev_ldap_directory import init_fakeldap
@@ -1409,6 +1412,8 @@ class ExternalAuthDataDict(TypedDict, total=False):
     # The mobile app doesn't actually use a session, so this
     # data is not applicable there.
     params_to_store_in_authenticated_session: Dict[str, str]
+    # SAC Uto patch: store target role for logged in user
+    sac_uto_prereg_user_invited_as: int
 
 
 class ExternalAuthResult:
@@ -1615,6 +1620,12 @@ def redirect_deactivated_user_to_login(realm: Realm, email: str) -> HttpResponse
     )
     return HttpResponseRedirect(redirect_url)
 
+def redirect_non_uto_member_to_login(realm: Realm) -> HttpResponseRedirect:
+    login_url = reverse("login_page", kwargs={"template_name": "zerver/login.html"})
+    redirect_url = append_url_query_string(
+        realm.uri + login_url, urlencode({"not_uto_member": "1"})
+    )
+    return HttpResponseRedirect(redirect_url)
 
 def social_associate_user_helper(
     backend: BaseAuth, return_data: Dict[str, Any], *args: Any, **kwargs: Any
@@ -1633,6 +1644,10 @@ def social_associate_user_helper(
         return None
     return_data["realm_id"] = realm.id
     return_data["realm_string_id"] = realm.string_id
+
+    # SAC Uto patch: log non-sensitive parts of OIDC response
+    response_to_log = { i:kwargs["response"][i] for i in kwargs["response"] if i not in ["access_token", "refresh_token", "id_token"] }
+    backend.logger.info("Processing login with OIDC response: %s", response_to_log)
 
     if not auth_enabled_helper([backend.auth_backend_name], realm):
         return_data["auth_backend_disabled"] = True
@@ -1740,6 +1755,7 @@ def social_associate_user_helper(
         "apple",
         "saml",
         "oidc",
+        "sac",
     ]:
         # (1) Apple authentication provides the user's name only the very first time a user tries to log in.
         # So if the user aborts login or otherwise is doing this the second time,
@@ -1791,6 +1807,87 @@ def social_auth_associate_user(
             "partial_backend_name": backend,
         }
 
+def sac_login_prepare_request(
+    backend: BaseAuth, details: Dict[str, Any], response: HttpResponse, *args: Any, **kwargs: Any
+) -> Union[HttpResponse, Dict[str, Any]]:
+    user_profile = kwargs["user_profile"]
+    return_data = kwargs["return_data"]
+    realm = Realm.objects.get(id=return_data["realm_id"])
+
+    # Initialize flags
+    can_sign_up_as_guest = False
+    is_sac_uto_member = False
+
+    # If this login request came from a private stream invite link then we allow non-members
+    # to sign up as guest users; this only affects the signup flow but not existing users
+    multiuse_object_key = backend.strategy.session_get("multiuse_object_key", "")
+    if multiuse_object_key:
+        backend.logger.info("Signing up with invite link ID: %s", multiuse_object_key)
+        try:
+            multiuse_obj = get_object_from_key(multiuse_object_key, [Confirmation.MULTIUSE_INVITE], mark_object_used=False)
+            assert multiuse_obj is not None
+            # We only allow guests to sign up if the invite subscribes them to at least one private stream
+            can_sign_up_as_guest = multiuse_obj.streams.filter(invite_only=True).exists()
+        except ConfirmationKeyError as exception:
+            backend.logger.warn("Invalid invite link ID: %s", multiuse_object_key)
+
+    # Check if the user is an SAC Uto member
+    roles = list(filter(None, map(lambda role: role.strip(), response.get("Roles", "").split(","))))
+    if backend.has_allowed_role(roles):
+        is_sac_uto_member = True
+
+    # Log flags
+    backend.logger.info("Is SAC Uto member: %s", is_sac_uto_member)
+    backend.logger.info("Allowed to sign up as guest: %s", can_sign_up_as_guest)
+
+    # If the user already exists then we adjust their role to their SAC Uto membership status
+    if user_profile:
+        assert isinstance(user_profile, UserProfile)
+
+        # If the current role is guest but they became SAC Uto members then we upgrade them
+        if user_profile.role == UserProfile.ROLE_GUEST and is_sac_uto_member:
+            backend.logger.info("Promoting guest to member because they are now an SAC Uto member: %s", user_profile.full_name)
+            # Upgrade role to member
+            do_change_user_role(user_profile, UserProfile.ROLE_MEMBER, acting_user=None)
+            # Add them to the default streams
+            streams = get_slim_realm_default_streams(user_profile.realm)
+            bulk_add_subscriptions(
+                realm,
+                streams,
+                [user_profile],
+                from_user_creation=True,
+                acting_user=None,
+            )
+
+        # If the current role is member but they lost SAC Uto membership then we demote them
+        if user_profile.role == UserProfile.ROLE_MEMBER and not is_sac_uto_member:
+            backend.logger.info("Demoting member to guest because they are no longer an SAC Uto member: %s", user_profile.full_name)
+            # Downgrade role to guest
+            do_change_user_role(user_profile, UserProfile.ROLE_GUEST, acting_user=None)
+
+    # If the user does not exist yet then we check if they are allowed to sign up
+    if not user_profile:
+        if is_sac_uto_member:
+            # SAC Uto members get signed up as members regardless of what's in any invite they may have used
+            backend.logger.info("User is an SAC Uto member - can sign up as a member")
+            return_data["sac_uto_prereg_user_invited_as"] = PreregistrationUser.INVITE_AS["MEMBER"]
+        elif can_sign_up_as_guest:
+            # Non-members are always signed up as guests even if the invite is for a regular member
+            backend.logger.info("User is not an SAC Uto member but has a valid invite - can sign up as a guest")
+            return_data["sac_uto_prereg_user_invited_as"] = PreregistrationUser.INVITE_AS["GUEST_USER"]
+        else:
+            # Do not allow non-members to sign up in the absence of a valid invite
+            backend.logger.info(
+                "User does not have required SAC Uto roles: %s - has roles: %s",
+                return_data["validated_email"],
+                roles,
+            )
+            return redirect_non_uto_member_to_login(realm)
+
+    first_name = response["vorname"]
+    last_name = response["familienname"]
+    return_data["full_name"] = f"{first_name or ''} {last_name or ''}".strip()
+    return details
 
 def social_auth_finish(
     backend: Any, details: Dict[str, Any], response: HttpResponse, *args: Any, **kwargs: Any
@@ -1949,6 +2046,7 @@ def social_auth_finish(
         mobile_flow_otp=mobile_flow_otp,
         desktop_flow_otp=desktop_flow_otp,
         params_to_store_in_authenticated_session=backend.get_params_to_store_in_authenticated_session(),
+        sac_uto_prereg_user_invited_as=return_data.get("sac_uto_prereg_user_invited_as"),
     )
     if user_profile is None:
         data_dict.update(dict(full_name=full_name, email=email_address))
@@ -2990,7 +3088,7 @@ def patch_saml_auth_require_messages_signed(auth: OneLogin_Saml2_Auth) -> None:
 @external_auth_method
 class GenericOpenIdConnectBackend(SocialAuthMixin, OpenIdConnectAuth):
     name = "oidc"
-    auth_backend_name = "OpenID Connect"
+    auth_backend_name = "Disabled OpenID Connect"
     sort_order = 100
 
     # Hack: We don't yet support multiple IdPs, but we want this
@@ -3046,6 +3144,42 @@ class GenericOpenIdConnectBackend(SocialAuthMixin, OpenIdConnectAuth):
         assert isinstance(result, bool)
         return result
 
+@external_auth_method
+class SacLoginBackend(SocialAuthMixin, OpenIdConnectAuth):
+    name = "sac"
+    auth_backend_name = "OpenID Connect"
+    display_icon = None
+    display_name = "SAC"
+    full_name_validated = True
+    settings_dict = getattr(settings, "SAC_LOGIN_CONFIG", {})
+    OIDC_ENDPOINT = settings_dict.get("discovery_url", "")
+    ALLOWED_ROLES = settings_dict.get("allowed_roles", [])
+    GET_ALL_EXTRA_DATA = True
+
+    def get_key_and_secret(self) -> Tuple[str, str]:
+        client_id = self.settings_dict["client_id"]
+        assert isinstance(client_id, str)
+        secret = self.settings_dict["client_secret"]
+        assert isinstance(secret, str)
+        return client_id, secret
+
+    def has_allowed_role(self, roles: (str)) -> bool:
+        return any(rr in roles for rr in self.ALLOWED_ROLES)
+
+    @classmethod
+    def dict_representation(cls, realm: Optional[Realm] = None) -> List[ExternalAuthMethodDictT]:
+        return [
+            dict(
+                name=f"oidc:{cls.name}",
+                display_name=cls.display_name,
+                display_icon=cls.display_icon,
+                login_url=reverse("login-social", args=(cls.name,)),
+                signup_url=reverse("signup-social", args=(cls.name,)),
+            )
+        ]
+
+    def should_auto_signup(self) -> bool:
+        return True
 
 def validate_otp_params(
     mobile_flow_otp: Optional[str] = None, desktop_flow_otp: Optional[str] = None

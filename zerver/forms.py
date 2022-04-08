@@ -63,7 +63,9 @@ DEACTIVATED_ACCOUNT_ERROR = gettext_lazy(
     " Please contact your organization administrator to reactivate it."
 )
 PASSWORD_TOO_WEAK_ERROR = gettext_lazy("The password is too weak.")
-
+NOT_UTO_MEMBER_ERROR = (
+    "Dieser Service kann nur von SAC Uto-Mitgliedern benutzt werden."
+)
 
 def email_is_not_mit_mailing_list(email: str) -> None:
     """Prevent MIT mailing lists from signing up for Zulip"""

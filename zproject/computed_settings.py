@@ -1110,6 +1110,7 @@ for idp_name, idp_dict in SOCIAL_AUTH_SAML_ENABLED_IDPS.items():
 SOCIAL_AUTH_PIPELINE = [
     "social_core.pipeline.social_auth.social_details",
     "zproject.backends.social_auth_associate_user",
+    "zproject.backends.sac_login_prepare_request",
     "zproject.backends.social_auth_finish",
 ]
 

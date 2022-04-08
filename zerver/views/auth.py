@@ -40,6 +40,7 @@ from zerver.context_processors import get_realm_from_request, login_context, zul
 from zerver.decorator import do_login, log_view_func, process_client, require_post
 from zerver.forms import (
     DEACTIVATED_ACCOUNT_ERROR,
+    NOT_UTO_MEMBER_ERROR,
     AuthenticationTokenForm,
     HomepageForm,
     OurAuthenticationForm,
@@ -163,6 +164,7 @@ def maybe_send_to_registration(
     multiuse_object_key: str = "",
     full_name_validated: bool = False,
     params_to_store_in_authenticated_session: Optional[Dict[str, str]] = None,
+    sac_uto_prereg_user_invited_as: Optional[int] = None,
 ) -> HttpResponse:
     """Given a successful authentication for an email address (i.e. we've
     confirmed the user controls the email address) that does not
@@ -237,6 +239,11 @@ def maybe_send_to_registration(
         invited_as = multiuse_obj.invited_as
     else:
         invited_as = PreregistrationUser.INVITE_AS["MEMBER"]
+
+    # SAC Uto patch: override new user role based on what we determined at login
+    assert(sac_uto_prereg_user_invited_as is not None)
+    invited_as = sac_uto_prereg_user_invited_as
+    logging.info("Creating new user: %s - with role: %s", full_name, invited_as)
 
     form = HomepageForm(
         {"email": email},
@@ -331,6 +338,7 @@ def register_remote_user(request: HttpRequest, result: ExternalAuthResult) -> Ht
         "multiuse_object_key",
         "full_name_validated",
         "params_to_store_in_authenticated_session",
+        "sac_uto_prereg_user_invited_as",
     ]
     for key in dict(kwargs):
         if key not in kwargs_to_pass:
@@ -778,6 +786,10 @@ def update_login_page_context(request: HttpRequest, context: Dict[str, Any]) -> 
     for key in ("email", "already_registered"):
         if key in request.GET:
             context[key] = request.GET[key]
+
+    not_uto_member = request.GET.get("not_uto_member")
+    if not_uto_member is not None:
+        context["deactivated_account_error"] = NOT_UTO_MEMBER_ERROR
 
     deactivated_email = request.GET.get("is_deactivated")
     if deactivated_email is None:
