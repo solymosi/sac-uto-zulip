@@ -102,17 +102,17 @@ def send_initial_direct_message(user: UserProfile) -> None:
 
         content = "".join(
             [
-                _("Hello, and welcome to Zulip!") + "👋" + " ",
-                _("This is a direct message from me, Welcome Bot.") + "\n\n",
-                "{getting_started_text}",
-                "{organization_setup_text}\n\n",
-                "{demo_organization_text}",
-                _(
-                    "I can also help you get set up! Just click anywhere on this message or press `r` to reply."
-                )
-                + "\n\n",
-                _("Here are a few messages I understand:") + " ",
-                bot_commands(),
+                "Hoi und willkommen beim Chat-Service der SAC-Sektion Uto! 👋\n",
+                "\n",
+                "Hier sind ein paar Dinge, die du als nächstes tun könntest:\n",
+                "\n",
+                "* Lies unsere Anleitung um die Chat-Plattform besser kennenzulernen: https://sac-uto.ch/de/services/chat\n",
+                "* Lade dein Profilbild hoch und passe deine Einstellungen an (weitere Infos in der Anleitung)\n",
+                "* Installiere die Zulip-App auf dein Handy: https://zulip.com/apps – und melde dich dort zum Server `chat.sac-uto.ch` an\n",
+                "* Schau dir die öffentlichen Streams an und mach mit bei der Diskussion\n",
+                "\n",
+                "Viel Spass beim Chatten wünscht dir\n"
+                "das Moderatoren- und Admin-Team 🥳",
             ]
         )
 
