@@ -210,7 +210,8 @@ def create_streams_if_needed(
             stream_post_policy=stream_dict.get(
                 "stream_post_policy", Stream.STREAM_POST_POLICY_EVERYONE
             ),
-            history_public_to_subscribers=stream_dict.get("history_public_to_subscribers"),
+            # SAC Uto patch: only allow private streams with shared history
+            history_public_to_subscribers=True,
             stream_description=stream_dict.get("description", ""),
             message_retention_days=stream_dict.get("message_retention_days", None),
             can_remove_subscribers_group=stream_dict.get("can_remove_subscribers_group", None),
