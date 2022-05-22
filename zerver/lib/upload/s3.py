@@ -83,6 +83,7 @@ def upload_image_to_s3(
         "STANDARD",
         "STANDARD_IA",
     ] = "STANDARD",
+    acl: Optional[str] = "private",
 ) -> None:
     key = bucket.Object(file_name)
     metadata = {
@@ -97,6 +98,7 @@ def upload_image_to_s3(
         content_disposition = "attachment"
 
     key.put(
+        ACL=acl,
         Body=contents,
         Metadata=metadata,
         ContentType=content_type,
@@ -271,6 +273,8 @@ class S3UploadBackend(ZulipUploadBackend):
             content_type,
             target_user_profile,
             image_data,
+            settings.S3_UPLOADS_STORAGE_CLASS,
+            "public-read",
         )
 
         # custom 500px wide version
@@ -281,6 +285,8 @@ class S3UploadBackend(ZulipUploadBackend):
             "image/png",
             target_user_profile,
             resized_medium,
+            settings.S3_UPLOADS_STORAGE_CLASS,
+            "public-read",
         )
 
         resized_data = resize_avatar(image_data)
@@ -290,6 +296,8 @@ class S3UploadBackend(ZulipUploadBackend):
             "image/png",
             target_user_profile,
             resized_data,
+            settings.S3_UPLOADS_STORAGE_CLASS,
+            "public-read",
         )
         # See avatar_url in avatar.py for URL.  (That code also handles the case
         # that users use gravatar.)
@@ -350,6 +358,8 @@ class S3UploadBackend(ZulipUploadBackend):
             "image/png",
             user_profile,
             resized_avatar,
+            settings.S3_UPLOADS_STORAGE_CLASS,
+            "public-read",
         )
 
     @override
@@ -377,6 +387,8 @@ class S3UploadBackend(ZulipUploadBackend):
             content_type,
             user_profile,
             image_data,
+            settings.S3_UPLOADS_STORAGE_CLASS,
+            "public-read",
         )
 
         resized_data = resize_avatar(image_data)
@@ -386,6 +398,8 @@ class S3UploadBackend(ZulipUploadBackend):
             "image/png",
             user_profile,
             resized_data,
+            settings.S3_UPLOADS_STORAGE_CLASS,
+            "public-read",
         )
         # See avatar_url in avatar.py for URL.  (That code also handles the case
         # that users use gravatar.)
@@ -417,6 +431,8 @@ class S3UploadBackend(ZulipUploadBackend):
             content_type,
             user_profile,
             image_data,
+            settings.S3_UPLOADS_STORAGE_CLASS,
+            "public-read",
         )
 
         resized_data = resize_logo(image_data)
@@ -426,6 +442,8 @@ class S3UploadBackend(ZulipUploadBackend):
             "image/png",
             user_profile,
             resized_data,
+            settings.S3_UPLOADS_STORAGE_CLASS,
+            "public-read",
         )
         # See avatar_url in avatar.py for URL.  (That code also handles the case
         # that users use gravatar.)
@@ -461,6 +479,8 @@ class S3UploadBackend(ZulipUploadBackend):
             content_type,
             user_profile,
             image_data,
+            settings.S3_UPLOADS_STORAGE_CLASS,
+            "public-read",
         )
 
         resized_image_data, is_animated, still_image_data = resize_emoji(image_data)
@@ -470,6 +490,8 @@ class S3UploadBackend(ZulipUploadBackend):
             content_type,
             user_profile,
             resized_image_data,
+            settings.S3_UPLOADS_STORAGE_CLASS,
+            "public-read",
         )
         if is_animated:
             still_path = RealmEmoji.STILL_PATH_ID_TEMPLATE.format(
@@ -483,6 +505,8 @@ class S3UploadBackend(ZulipUploadBackend):
                 "image/png",
                 user_profile,
                 still_image_data,
+                settings.S3_UPLOADS_STORAGE_CLASS,
+                "public-read",
             )
 
         return is_animated
