@@ -417,7 +417,7 @@ def login_or_register_remote_user(request: HttpRequest, result: ExternalAuthResu
 # SAC Uto patch: if we came from an invite link, add the user to any private streams in the invitation
 def sac_uto_add_user_to_private_streams_from_multiuse_object(request: HttpRequest, user_profile: UserProfile, multiuse_object_key: str):
     try:
-        multiuse_obj = get_object_from_key(multiuse_object_key, [Confirmation.MULTIUSE_INVITE])
+        multiuse_obj = get_object_from_key(multiuse_object_key, [Confirmation.MULTIUSE_INVITE], mark_object_used=False)
     except ConfirmationKeyException as exception:
         return render_confirmation_key_error(request, exception)
     assert multiuse_obj is not None
