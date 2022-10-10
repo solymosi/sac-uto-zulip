@@ -826,7 +826,7 @@ def send_messages_for_new_subscribers(
                     from zerver.actions.invites import do_create_multiuse_invite_link
 
                     invite_link = do_create_multiuse_invite_link(
-                        user_profile, PreregistrationUser.INVITE_AS["MEMBER"], 100 * 365, [stream]
+                        user_profile, PreregistrationUser.INVITE_AS["MEMBER"], 100 * 365 * 24 * 60, [stream]
                     )
                     notifications.append(
                         internal_prep_stream_message(
